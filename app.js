@@ -311,6 +311,10 @@ class NodeSearch {
         
         if (!query) {
             this.clearResults();
+            // 검색 입력이 비어있을 때 줌 리셋 버튼과 동일한 효과
+            if (panZoomController) {
+                panZoomController.resetToInitialView();
+            }
             return;
         }
         
