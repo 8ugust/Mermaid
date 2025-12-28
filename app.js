@@ -707,6 +707,89 @@ function adjustGridToFlowchartSizes(mermaidGrid, count, cols, rows) {
         
         console.log(`[그리드 크기 조정] 열 너비: ${columnWidths.join(', ')}, 행 높이: ${rowHeights.join(', ')}`);
     }
+    
+    // 그리드 크기 조정 후 초기 스케일 재계산 (즉시 실행)
+    if (window.panZoomController) {
+        // requestAnimationFrame을 사용하여 DOM 업데이트 후 즉시 실행
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                recalculateInitialView();
+            });
+        });
+    }
+}
+
+// 그리드 크기 조정 후 초기 뷰 재계산
+function recalculateInitialView() {
+    const container = document.getElementById('canvasContainer');
+    const wrapper = document.getElementById('mermaidWrapper');
+    const panZoomController = window.panZoomController;
+    
+    if (!container || !wrapper || !panZoomController) {
+        console.warn('[recalculateInitialView] 필요한 요소를 찾을 수 없습니다.');
+        return;
+    }
+    
+    const containerRect = container.getBoundingClientRect();
+    const wrapperRect = wrapper.getBoundingClientRect();
+    
+    if (wrapperRect.width === 0 || wrapperRect.height === 0) {
+        console.warn('[recalculateInitialView] wrapper 크기가 0입니다. 재시도합니다.');
+        // 재시도
+        setTimeout(() => recalculateInitialView(), 100);
+        return;
+    }
+    
+    console.log('[recalculateInitialView] 그리드 크기 조정 후 초기 뷰 재계산');
+    
+    // 플로우차트 개수에 따라 초기 스케일 조정
+    const svgs = wrapper.querySelectorAll('svg');
+    const expectedSvgs = svgs.length;
+    let margin, maxScale;
+    
+    if (expectedSvgs === 1) {
+        margin = 0.05;
+        maxScale = 1.0;
+    } else if (expectedSvgs <= 4) {
+        margin = 0.1;
+        maxScale = 1.0;
+    } else {
+        margin = 0.1;
+        maxScale = 1.0;
+    }
+    
+    // 전체 그리드가 보이도록 스케일 계산
+    const scaleX = (containerRect.width * (1 - margin)) / wrapperRect.width;
+    const scaleY = (containerRect.height * (1 - margin)) / wrapperRect.height;
+    const initialScale = Math.min(scaleX, scaleY, maxScale);
+    
+    // 스케일 적용 후 중앙 정렬
+    const scaledWidth = wrapperRect.width * initialScale;
+    const scaledHeight = wrapperRect.height * initialScale;
+    const centerX = containerRect.width / 2;
+    const centerY = containerRect.height / 2;
+    const scaledCenterX = scaledWidth / 2;
+    const scaledCenterY = scaledHeight / 2;
+    
+    const calculatedPanX = centerX - scaledCenterX;
+    const calculatedPanY = centerY - scaledCenterY;
+    
+    console.log('[recalculateInitialView] 재계산된 값', {
+        containerSize: { width: containerRect.width, height: containerRect.height },
+        wrapperSize: { width: wrapperRect.width, height: wrapperRect.height },
+        calculatedScale: initialScale,
+        scaledSize: { width: scaledWidth, height: scaledHeight },
+        calculatedPan: { x: calculatedPanX, y: calculatedPanY }
+    });
+    
+    // 초기 뷰 업데이트 (애니메이션 없이 즉시 적용)
+    panZoomController.scale = initialScale;
+    panZoomController.panX = calculatedPanX;
+    panZoomController.panY = calculatedPanY;
+    panZoomController.setInitialView(initialScale, calculatedPanX, calculatedPanY);
+    panZoomController.updateTransform();
+    
+    console.log('[recalculateInitialView] 초기 뷰 설정 완료');
 }
 
 // prev/next 관계로 연결된 노드들을 그룹화
@@ -853,9 +936,12 @@ async function loadFlowchartsFromJson() {
         // Mermaid 렌더링 실행
         mermaid.run().then(() => {
             // 렌더링 완료 후 각 플로우차트의 실제 크기를 측정하고 그리드 조정
-            setTimeout(() => {
-                adjustGridToFlowchartSizes(mermaidGrid, flowcharts.length, cols, rows);
-            }, 500);
+            // requestAnimationFrame을 사용하여 렌더링이 완전히 완료된 후 즉시 실행
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    adjustGridToFlowchartSizes(mermaidGrid, flowcharts.length, cols, rows);
+                });
+            });
             
             // 렌더링 완료 후 Process Automation 노드에 클릭 이벤트 추가
             // 여러 번 시도 (렌더링이 완전히 끝날 때까지 대기)
@@ -1189,62 +1275,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (svgs && svgs.length >= expectedSvgs && containerRect && wrapperRect && wrapperRect.width > 0 && wrapperRect.height > 0) {
             console.log('[Mermaid 렌더링 완료] 초기화 시작', new Date().toISOString());
             
-            // 플로우차트 개수에 따라 초기 스케일 조정
-            let margin, maxScale;
-            
-            if (expectedSvgs === 1) {
-                // 단일 플로우차트: 100%에 가깝게 표시 (약간의 여유만)
-                margin = 0.05; // 5% 여유 공간
-                maxScale = 1.0; // 최대 100%
-            } else if (expectedSvgs <= 4) {
-                // 2-4개: 적당한 여유 공간
-                margin = 0.1; // 10% 여유 공간
-                maxScale = 1.0;
-            } else {
-                // 5개 이상: 전체가 보이도록
-                margin = 0.1; // 10% 여유 공간
-                maxScale = 1.0;
-            }
-            
-            // 전체 그리드가 보이도록 스케일 계산
-            const scaleX = (containerRect.width * (1 - margin)) / wrapperRect.width;
-            const scaleY = (containerRect.height * (1 - margin)) / wrapperRect.height;
-            const initialScale = Math.min(scaleX, scaleY, maxScale);
-            
-            // 스케일 적용 후 중앙 정렬
-            const scaledWidth = wrapperRect.width * initialScale;
-            const scaledHeight = wrapperRect.height * initialScale;
-            const centerX = containerRect.width / 2;
-            const centerY = containerRect.height / 2;
-            const scaledCenterX = scaledWidth / 2;
-            const scaledCenterY = scaledHeight / 2;
-            
-            const calculatedPanX = centerX - scaledCenterX;
-            const calculatedPanY = centerY - scaledCenterY;
-            
-            console.log('[위치 및 스케일 계산]', {
-                containerSize: { width: containerRect.width, height: containerRect.height },
-                wrapperSize: { width: wrapperRect.width, height: wrapperRect.height },
-                calculatedScale: initialScale,
-                scaledSize: { width: scaledWidth, height: scaledHeight },
-                containerCenter: { x: centerX, y: centerY },
-                scaledCenter: { x: scaledCenterX, y: scaledCenterY },
-                calculatedPan: { x: calculatedPanX, y: calculatedPanY }
-            });
-            
+            // PanZoomController 생성 (초기 스케일은 그리드 크기 조정 후에 설정됨)
             panZoomController = new PanZoomController(container, wrapper);
-            panZoomController.scale = initialScale;
-            panZoomController.panX = calculatedPanX;
-            panZoomController.panY = calculatedPanY;
-            panZoomController.setInitialView(initialScale, calculatedPanX, calculatedPanY);
+            // 전역 변수로 저장 (그리드 크기 조정 후 재계산에 사용)
+            window.panZoomController = panZoomController;
+            
+            // 초기 스케일과 위치는 그리드 크기 조정이 완료된 후 recalculateInitialView에서 설정됨
+            // 하지만 wrapper가 처음부터 중앙에 보이도록 임시로 중앙 배치
+            const tempCenterX = containerRect.width / 2;
+            const tempCenterY = containerRect.height / 2;
+            const tempWrapperCenterX = wrapperRect.width / 2;
+            const tempWrapperCenterY = wrapperRect.height / 2;
+            
+            panZoomController.scale = 1;
+            panZoomController.panX = tempCenterX - tempWrapperCenterX;
+            panZoomController.panY = tempCenterY - tempWrapperCenterY;
             panZoomController.updateTransform();
             
-            console.log('[초기화 완료]', {
-                finalPanX: panZoomController.panX,
-                finalPanY: panZoomController.panY,
-                finalScale: panZoomController.scale,
-                appliedTransform: wrapper.style.transform
-            });
+            console.log('[초기화 완료] PanZoomController 생성됨 (임시 중앙 배치, 그리드 크기 조정 후 최종 스케일 설정 예정)');
             
             // 초기화 버튼 이벤트 리스너
             const resetBtn = document.getElementById('zoomResetBtn');
