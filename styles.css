@@ -219,20 +219,18 @@ body {
 /* Mermaid 그리드 레이아웃 */
 .mermaid-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(3, 1fr);
     gap: 80px;
     padding: 60px;
     width: fit-content;
     height: fit-content;
+    /* grid-template-columns와 grid-template-rows는 JavaScript에서 동적으로 설정됩니다 */
 }
 
 /* Mermaid 다이어그램 스타일 커스터마이징 */
 .mermaid {
     background: transparent;
     padding: 30px;
-    min-width: 300px;
-    min-height: 200px;
+    /* 크기는 JavaScript에서 동적으로 설정됩니다 */
 }
 
 #mermaidDiagram {

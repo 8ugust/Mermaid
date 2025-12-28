@@ -392,12 +392,172 @@ class NodeSearch {
     }
 }
 
+// JSON 데이터를 Mermaid 플로우차트 문법으로 변환
+function convertJsonToMermaid(nodes) {
+    if (!nodes || nodes.length === 0) return '';
+    
+    let mermaidCode = 'flowchart TD\n';
+    
+    // 노드 정의 및 연결 생성
+    const nodeMap = new Map();
+    nodes.forEach(node => {
+        nodeMap.set(node.id, node);
+    });
+    
+    // 모든 노드 정의
+    nodes.forEach(node => {
+        // Mermaid에서 사용할 수 있도록 ID를 안전하게 변환 (특수문자 제거)
+        const safeId = node.id.replace(/[^a-zA-Z0-9_]/g, '_');
+        const nodeName = node.name.replace(/"/g, '&quot;'); // 따옴표 이스케이프
+        mermaidCode += `    ${safeId}["${nodeName}"]\n`;
+    });
+    
+    // 연결 생성
+    nodes.forEach(node => {
+        const fromId = node.id.replace(/[^a-zA-Z0-9_]/g, '_');
+        
+        // next 배열의 각 노드로 연결
+        if (node.next && node.next.length > 0) {
+            node.next.forEach(nextId => {
+                const toId = nextId.replace(/[^a-zA-Z0-9_]/g, '_');
+                mermaidCode += `    ${fromId} --> ${toId}\n`;
+            });
+        }
+    });
+    
+    return mermaidCode;
+}
+
+// JSON 파일을 읽어서 플로우차트 생성
+async function loadFlowchartsFromJson() {
+    try {
+        const response = await fetch('data.json');
+        if (!response.ok) {
+            throw new Error('JSON 파일을 불러올 수 없습니다.');
+        }
+        
+        const jsonData = await response.json();
+        console.log('[JSON 로드] 플로우차트 데이터:', jsonData);
+        
+        // JSON 구조 확인: 배열의 배열인지 단일 배열인지
+        let flowcharts = [];
+        if (Array.isArray(jsonData)) {
+            if (jsonData.length > 0 && Array.isArray(jsonData[0])) {
+                // 배열의 배열 형태 (여러 플로우차트)
+                flowcharts = jsonData;
+            } else if (jsonData.length > 0 && typeof jsonData[0] === 'object' && jsonData[0].id) {
+                // 단일 플로우차트 (노드 배열) - 하나의 플로우차트로 처리
+                flowcharts = [jsonData];
+            }
+        } else {
+            console.warn('[경고] JSON 데이터가 배열이 아닙니다.');
+        }
+        
+        const mermaidGrid = document.getElementById('mermaidGrid');
+        if (!mermaidGrid) {
+            console.error('mermaidGrid 요소를 찾을 수 없습니다.');
+            return 0;
+        }
+        
+        // 기존 내용 제거
+        mermaidGrid.innerHTML = '';
+        
+        // 플로우차트 개수에 따라 그리드 레이아웃 계산
+        const count = flowcharts.length;
+        let cols, rows;
+        
+        if (count === 0) {
+            cols = 1;
+            rows = 1;
+        } else if (count === 1) {
+            cols = 1;
+            rows = 1;
+        } else {
+            // 정사각형에 가까운 형태로 계산
+            cols = Math.ceil(Math.sqrt(count));
+            rows = Math.ceil(count / cols);
+        }
+        
+        // 그리드 레이아웃 동적 설정
+        mermaidGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+        mermaidGrid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+        
+        // 플로우차트 개수에 따라 크기와 간격 조정
+        let flowchartWidth, flowchartHeight, gap, padding;
+        
+        if (count === 1) {
+            // 단일 플로우차트: 크게 표시
+            flowchartWidth = '1200px';
+            flowchartHeight = '800px';
+            gap = '40px';
+            padding = '40px';
+        } else if (count <= 4) {
+            // 2-4개: 중간 크기
+            flowchartWidth = '600px';
+            flowchartHeight = '400px';
+            gap = '60px';
+            padding = '40px';
+        } else if (count <= 9) {
+            // 5-9개: 작은 크기
+            flowchartWidth = '400px';
+            flowchartHeight = '300px';
+            gap = '60px';
+            padding = '40px';
+        } else {
+            // 10개 이상: 더 작은 크기
+            flowchartWidth = '300px';
+            flowchartHeight = '250px';
+            gap = '50px';
+            padding = '30px';
+        }
+        
+        // 그리드 간격과 패딩 설정
+        mermaidGrid.style.gap = gap;
+        mermaidGrid.style.padding = padding;
+        
+        console.log(`[그리드 레이아웃] ${count}개 플로우차트 → ${rows}행 ${cols}열 그리드`);
+        console.log(`[플로우차트 크기] ${flowchartWidth} x ${flowchartHeight}, 간격: ${gap}, 패딩: ${padding}`);
+        
+        // 각 플로우차트 생성
+        flowcharts.forEach((flowchartData, index) => {
+            const mermaidCode = convertJsonToMermaid(flowchartData);
+            
+            const flowchartDiv = document.createElement('div');
+            flowchartDiv.className = 'mermaid';
+            flowchartDiv.setAttribute('data-flowchart', index + 1);
+            flowchartDiv.textContent = mermaidCode;
+            
+            // 플로우차트 크기 설정
+            flowchartDiv.style.width = flowchartWidth;
+            flowchartDiv.style.height = flowchartHeight;
+            flowchartDiv.style.minWidth = flowchartWidth;
+            flowchartDiv.style.minHeight = flowchartHeight;
+            
+            mermaidGrid.appendChild(flowchartDiv);
+        });
+        
+        console.log(`[플로우차트 생성] ${flowcharts.length}개의 플로우차트가 생성되었습니다.`);
+        
+        // Mermaid 렌더링 실행
+        mermaid.run();
+        
+        return flowcharts.length;
+        
+    } catch (error) {
+        console.error('[오류] JSON 파일 로드 실패:', error);
+        return 0;
+    }
+}
+
 // 초기화
 let panZoomController;
 let nodeSearch;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     console.log('[DOMContentLoaded] 페이지 로드 완료', new Date().toISOString());
+    
+    // JSON 파일에서 플로우차트 로드
+    const flowchartCount = await loadFlowchartsFromJson();
     
     const container = document.getElementById('canvasContainer');
     const wrapper = document.getElementById('mermaidWrapper');
@@ -405,7 +565,8 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('[초기 상태 확인]', {
         container: container ? '존재' : '없음',
         wrapper: wrapper ? '존재' : '없음',
-        wrapperHasSVG: wrapper?.querySelector('svg') ? '있음' : '없음'
+        wrapperHasSVG: wrapper?.querySelector('svg') ? '있음' : '없음',
+        expectedFlowcharts: flowchartCount
     });
     
     // Mermaid 렌더링 완료를 기다리는 함수
@@ -413,7 +574,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const svgs = wrapper?.querySelectorAll('svg');
         const containerRect = container?.getBoundingClientRect();
         const wrapperRect = wrapper?.getBoundingClientRect();
-        const expectedSvgs = 9; // 9개의 플로우차트
+        const expectedSvgs = flowchartCount || 1; // 동적으로 계산된 플로우차트 개수
         
         console.log(`[waitForMermaidRender] 시도 ${attempts + 1}/${maxAttempts}`, {
             svgs: svgs ? `${svgs.length}/${expectedSvgs} 렌더링됨` : '대기중',
@@ -432,11 +593,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (svgs && svgs.length >= expectedSvgs && containerRect && wrapperRect && wrapperRect.width > 0 && wrapperRect.height > 0) {
             console.log('[Mermaid 렌더링 완료] 초기화 시작', new Date().toISOString());
             
-            // 전체 그리드가 보이도록 스케일 계산 (여유 공간을 위해 0.9 배율 적용)
-            const margin = 0.1; // 10% 여유 공간
+            // 플로우차트 개수에 따라 초기 스케일 조정
+            let margin, maxScale;
+            
+            if (expectedSvgs === 1) {
+                // 단일 플로우차트: 100%에 가깝게 표시 (약간의 여유만)
+                margin = 0.05; // 5% 여유 공간
+                maxScale = 1.0; // 최대 100%
+            } else if (expectedSvgs <= 4) {
+                // 2-4개: 적당한 여유 공간
+                margin = 0.1; // 10% 여유 공간
+                maxScale = 1.0;
+            } else {
+                // 5개 이상: 전체가 보이도록
+                margin = 0.1; // 10% 여유 공간
+                maxScale = 1.0;
+            }
+            
+            // 전체 그리드가 보이도록 스케일 계산
             const scaleX = (containerRect.width * (1 - margin)) / wrapperRect.width;
             const scaleY = (containerRect.height * (1 - margin)) / wrapperRect.height;
-            const initialScale = Math.min(scaleX, scaleY, 1); // 1보다 크게 확대하지 않음
+            const initialScale = Math.min(scaleX, scaleY, maxScale);
             
             // 스케일 적용 후 중앙 정렬
             const scaledWidth = wrapperRect.width * initialScale;
