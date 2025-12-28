@@ -242,6 +242,14 @@ body {
     /* 크기는 JavaScript에서 동적으로 설정됩니다 */
 }
 
+/* Mermaid 노드 텍스트 가운데 정렬 */
+.mermaid svg text,
+.mermaid svg p,
+.mermaid svg tspan {
+    text-anchor: middle;
+    dominant-baseline: middle;
+}
+
 #mermaidDiagram {
     background: transparent !important;
 }

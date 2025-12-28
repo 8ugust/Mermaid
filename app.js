@@ -490,9 +490,12 @@ function convertJsonToMermaid(nodes) {
         
         // 따옴표 이스케이프
         const safeName = commonName.replace(/"/g, '&quot;');
+        const safeBaseIdDisplay = baseId.replace(/"/g, '&quot;');
         
         // Process Automation shape 사용
-        mermaidCode += `    ${safeBaseId}@{ shape: procs, label: "${safeName}"}\n`;
+        // 첫 번째 줄: baseId (bold), 두 번째 줄: name
+        const label = `**${safeBaseIdDisplay}**<br/>${safeName}`;
+        mermaidCode += `    ${safeBaseId}@{ shape: procs, label: "${label}"}\n`;
         
         // 그룹화된 노드들의 정보를 전역 변수에 저장 (모달에서 사용)
         if (!window.processAutomationGroups) {
@@ -505,8 +508,12 @@ function convertJsonToMermaid(nodes) {
     nodes.forEach(node => {
         if (!processedNodes.has(node.id)) {
             const safeId = node.id.replace(/[^a-zA-Z0-9_]/g, '_');
+            const nodeId = node.id.replace(/"/g, '&quot;');
             const nodeName = node.name.replace(/"/g, '&quot;');
-            mermaidCode += `    ${safeId}["${nodeName}"]\n`;
+            // 첫 번째 줄: id (bold), 두 번째 줄: name
+            // Mermaid에서 <br/>로 줄바꿈, **text**로 bold
+            const label = `**${nodeId}**<br/>${nodeName}`;
+            mermaidCode += `    ${safeId}["${label}"]\n`;
         }
     });
     
