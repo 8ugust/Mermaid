@@ -410,18 +410,57 @@ class NodeSearch {
     scrollToNode(node) {
         // 노드로 이동 (패닝 컨트롤러를 통해)
         if (node.element && node.svg && panZoomController) {
-            const svgRect = node.svg.getBoundingClientRect();
+            const container = document.getElementById('canvasContainer');
+            const wrapper = document.getElementById('mermaidWrapper');
+            
+            if (!container || !wrapper) return;
+            
+            const containerRect = container.getBoundingClientRect();
+            const currentScale = panZoomController.scale;
+            const currentPanX = panZoomController.panX;
+            const currentPanY = panZoomController.panY;
+            
+            // 1. 노드의 현재 화면상 위치 측정 (transform 적용 후)
             const nodeRect = node.element.getBoundingClientRect();
+            const nodeScreenX = nodeRect.left + nodeRect.width / 2;
+            const nodeScreenY = nodeRect.top + nodeRect.height / 2;
             
-            const containerRect = document.getElementById('canvasContainer').getBoundingClientRect();
+            // 2. 현재 transform을 역으로 적용하여 wrapper 좌표계로 변환
+            // transform: translate(panX, panY) scale(scale)
+            // 화면 좌표 = wrapper 좌표 * scale + pan
+            // 따라서: wrapper 좌표 = (화면 좌표 - pan) / scale
+            const containerScreenX = containerRect.left;
+            const containerScreenY = containerRect.top;
             
-            // 노드를 화면 중앙으로 이동
-            const targetX = containerRect.width / 2 - (nodeRect.left - svgRect.left + nodeRect.width / 2);
-            const targetY = containerRect.height / 2 - (nodeRect.top - svgRect.top + nodeRect.height / 2);
+            // 노드의 wrapper 좌표계 위치 계산
+            const nodeWrapperX = (nodeScreenX - containerScreenX - currentPanX) / currentScale;
+            const nodeWrapperY = (nodeScreenY - containerScreenY - currentPanY) / currentScale;
             
-            panZoomController.panX = targetX;
-            panZoomController.panY = targetY;
+            // 3. 캔버스 중앙 좌표 (컨테이너 기준)
+            const canvasCenterX = containerRect.width / 2;
+            const canvasCenterY = containerRect.height / 2;
+            
+            // 4. 노드를 캔버스 중앙에 오도록 새로운 pan 값 계산
+            // 노드가 wrapper 좌표계에서 nodeWrapperX, nodeWrapperY에 있고,
+            // 이것을 canvasCenterX, canvasCenterY에 오도록 해야 함
+            // canvasCenter = nodeWrapper * scale + newPan
+            // 따라서: newPan = canvasCenter - nodeWrapper * scale
+            const newPanX = canvasCenterX - nodeWrapperX * currentScale;
+            const newPanY = canvasCenterY - nodeWrapperY * currentScale;
+            
+            panZoomController.panX = newPanX;
+            panZoomController.panY = newPanY;
             panZoomController.updateTransform();
+            
+            console.log('[scrollToNode] 노드 이동 완료', {
+                nodeName: node.name,
+                nodeScreenPosition: { x: nodeScreenX, y: nodeScreenY },
+                nodeInWrapper: { x: nodeWrapperX, y: nodeWrapperY },
+                canvasCenter: { x: canvasCenterX, y: canvasCenterY },
+                oldPan: { x: currentPanX, y: currentPanY },
+                newPan: { x: newPanX, y: newPanY },
+                currentScale: currentScale
+            });
         }
     }
     
