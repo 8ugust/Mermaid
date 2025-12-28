@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid Flowchart Viewer</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="mermaid.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- 왼쪽 사이드바 -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>노드 검색</h2>
+            </div>
+            <div class="search-section">
+                <div class="search-box">
+                    <input 
+                        type="text" 
+                        id="nodeSearch" 
+                        placeholder="노드 이름을 입력하세요..."
+                        autocomplete="off"
+                    >
+                    <button id="searchBtn" class="search-button">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div id="searchResults" class="search-results"></div>
+            </div>
+        </div>
+
+        <!-- 오른쪽 메인 콘텐츠 -->
+        <div class="main-content">
+            <!-- 플로팅 줌 컨트롤 -->
+            <div class="zoom-controls">
+                <div class="zoom-info">
+                    <span id="zoomPercentage">100%</span>
+                </div>
+                <button class="zoom-reset-btn" id="zoomResetBtn" title="전체보기로 초기화">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                        <path d="M21 3v5h-5"></path>
+                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                        <path d="M3 21v-5h5"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="canvas-container" id="canvasContainer">
+                <div class="mermaid-wrapper" id="mermaidWrapper">
+                    <div class="mermaid-grid">
+                        <div class="mermaid" data-flowchart="1">
+                            flowchart TD
+                                R1C1[Node R1C1] --> R1C2[Node R1C2]
+                                R1C2 --> R1C3[Node R1C3]
+                                R1C3 --> R1C4[Node R1C4]
+                                R1C4 --> R1C5[Node R1C5]
+                        </div>
+                        <div class="mermaid" data-flowchart="2">
+                            flowchart TD
+                                R2C1[Node R2C1] --> R2C2[Node R2C2]
+                                R2C2 --> R2C3[Node R2C3]
+                                R2C3 --> R2C4[Node R2C4]
+                                R2C4 --> R2C5[Node R2C5]
+                        </div>
+                        <div class="mermaid" data-flowchart="3">
+                            flowchart TD
+                                R3C1[Node R3C1] --> R3C2[Node R3C2]
+                                R3C2 --> R3C3[Node R3C3]
+                                R3C3 --> R3C4[Node R3C4]
+                                R3C4 --> R3C5[Node R3C5]
+                        </div>
+                        <div class="mermaid" data-flowchart="4">
+                            flowchart TD
+                                R4C1[Node R4C1] --> R4C2[Node R4C2]
+                                R4C2 --> R4C3[Node R4C3]
+                                R4C3 --> R4C4[Node R4C4]
+                                R4C4 --> R4C5[Node R4C5]
+                        </div>
+                        <div class="mermaid" data-flowchart="5">
+                            flowchart TD
+                                R5C1[Node R5C1] --> R5C2[Node R5C2]
+                                R5C2 --> R5C3[Node R5C3]
+                                R5C3 --> R5C4[Node R5C4]
+                                R5C4 --> R5C5[Node R5C5]
+                        </div>
+                        <div class="mermaid" data-flowchart="6">
+                            flowchart TD
+                                R6C1[Node R6C1] --> R6C2[Node R6C2]
+                                R6C2 --> R6C3[Node R6C3]
+                                R6C3 --> R6C4[Node R6C4]
+                                R6C4 --> R6C5[Node R6C5]
+                        </div>
+                        <div class="mermaid" data-flowchart="7">
+                            flowchart TD
+                                R7C1[Node R7C1] --> R7C2[Node R7C2]
+                                R7C2 --> R7C3[Node R7C3]
+                                R7C3 --> R7C4[Node R7C4]
+                                R7C4 --> R7C5[Node R7C5]
+                        </div>
+                        <div class="mermaid" data-flowchart="8">
+                            flowchart TD
+                                R8C1[Node R8C1] --> R8C2[Node R8C2]
+                                R8C2 --> R8C3[Node R8C3]
+                                R8C3 --> R8C4[Node R8C4]
+                                R8C4 --> R8C5[Node R8C5]
+                        </div>
+                        <div class="mermaid" data-flowchart="9">
+                            flowchart TD
+                                R9C1[Node R9C1] --> R9C2[Node R9C2]
+                                R9C2 --> R9C3[Node R9C3]
+                                R9C3 --> R9C4[Node R9C4]
+                                R9C4 --> R9C5[Node R9C5]
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+
