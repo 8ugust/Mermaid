@@ -52,5 +52,11 @@
         "name": "CMS자동이체청구결과파일송신",
         "prev": ["BARP960003"],
         "next": []
+    },
+    {
+        "id": "BARP970000",
+        "name": "FBS자동이체청구Dummy",
+        "prev": [],
+        "next": []
     }
 ]

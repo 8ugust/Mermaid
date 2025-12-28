@@ -610,6 +610,70 @@ function convertJsonToMermaid(nodes) {
     return mermaidCode;
 }
 
+// prev/next 관계로 연결된 노드들을 그룹화
+function groupNodesByConnections(allNodes) {
+    const nodeMap = new Map();
+    allNodes.forEach(node => {
+        nodeMap.set(node.id, node);
+    });
+    
+    const visited = new Set();
+    const flowcharts = [];
+    
+    // 모든 노드를 순회
+    allNodes.forEach(node => {
+        // 이미 방문한 노드는 건너뛰기
+        if (visited.has(node.id)) {
+            return;
+        }
+        
+        // 연결된 노드들을 찾기 (DFS)
+        const connectedNodes = new Set();
+        const stack = [node.id];
+        
+        while (stack.length > 0) {
+            const currentNodeId = stack.pop();
+            
+            if (visited.has(currentNodeId)) {
+                continue;
+            }
+            
+            visited.add(currentNodeId);
+            const currentNode = nodeMap.get(currentNodeId);
+            
+            if (currentNode) {
+                connectedNodes.add(currentNode);
+                
+                // prev 노드들 추가
+                if (currentNode.prev && currentNode.prev.length > 0) {
+                    currentNode.prev.forEach(prevId => {
+                        if (!visited.has(prevId) && nodeMap.has(prevId)) {
+                            stack.push(prevId);
+                        }
+                    });
+                }
+                
+                // next 노드들 추가
+                if (currentNode.next && currentNode.next.length > 0) {
+                    currentNode.next.forEach(nextId => {
+                        if (!visited.has(nextId) && nodeMap.has(nextId)) {
+                            stack.push(nextId);
+                        }
+                    });
+                }
+            }
+        }
+        
+        // 연결된 노드들을 배열로 변환하여 플로우차트로 추가
+        if (connectedNodes.size > 0) {
+            flowcharts.push(Array.from(connectedNodes));
+        }
+    });
+    
+    console.log(`[그룹화 완료] 총 ${flowcharts.length}개의 플로우차트 생성`);
+    return flowcharts;
+}
+
 // JSON 파일을 읽어서 플로우차트 생성
 async function loadFlowchartsFromJson() {
     try {
@@ -619,21 +683,16 @@ async function loadFlowchartsFromJson() {
         }
         
         const jsonData = await response.json();
-        console.log('[JSON 로드] 플로우차트 데이터:', jsonData);
+        console.log('[JSON 로드] 노드 데이터:', jsonData);
         
-        // JSON 구조 확인: 배열의 배열인지 단일 배열인지
-        let flowcharts = [];
-        if (Array.isArray(jsonData)) {
-            if (jsonData.length > 0 && Array.isArray(jsonData[0])) {
-                // 배열의 배열 형태 (여러 플로우차트)
-                flowcharts = jsonData;
-            } else if (jsonData.length > 0 && typeof jsonData[0] === 'object' && jsonData[0].id) {
-                // 단일 플로우차트 (노드 배열) - 하나의 플로우차트로 처리
-                flowcharts = [jsonData];
-            }
-        } else {
+        // JSON이 배열인지 확인
+        if (!Array.isArray(jsonData)) {
             console.warn('[경고] JSON 데이터가 배열이 아닙니다.');
+            return 0;
         }
+        
+        // prev/next 관계로 노드들을 그룹화하여 플로우차트 생성
+        const flowcharts = groupNodesByConnections(jsonData);
         
         const mermaidGrid = document.getElementById('mermaidGrid');
         if (!mermaidGrid) {
