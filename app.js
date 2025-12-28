@@ -64,7 +64,7 @@ mermaid.initialize({
         labelColor: '#0f172a'
     },
     flowchart: {
-        useMaxWidth: true,
+        useMaxWidth: false,
         htmlLabels: true,
         curve: 'basis',
         padding: 20
@@ -637,21 +637,51 @@ function adjustGridToFlowchartSizes(mermaidGrid, count, cols, rows) {
     flowchartDivs.forEach((div, index) => {
         const svg = div.querySelector('svg');
         if (svg) {
-            const svgRect = svg.getBoundingClientRect();
+            // SVG의 원본 크기를 가져옴 (viewBox 또는 width/height 속성 사용)
+            let svgWidth = 0;
+            let svgHeight = 0;
+            
+            // viewBox가 있으면 viewBox를 사용
+            if (svg.viewBox && svg.viewBox.baseVal) {
+                svgWidth = svg.viewBox.baseVal.width;
+                svgHeight = svg.viewBox.baseVal.height;
+            }
+            // viewBox가 없으면 width/height 속성 사용
+            else if (svg.width && svg.width.baseVal) {
+                svgWidth = svg.width.baseVal.value;
+                svgHeight = svg.height.baseVal.value;
+            }
+            // 속성도 없으면 getBBox() 사용 (SVG 내부 요소들의 경계)
+            else {
+                try {
+                    const bbox = svg.getBBox();
+                    svgWidth = bbox.width + bbox.x;
+                    svgHeight = bbox.height + bbox.y;
+                } catch (e) {
+                    // getBBox 실패 시 getBoundingClientRect 사용
+                    const svgRect = svg.getBoundingClientRect();
+                    svgWidth = svgRect.width;
+                    svgHeight = svgRect.height;
+                }
+            }
             
             // SVG 크기 + 패딩을 고려한 실제 크기
-            const width = Math.max(svgRect.width, 200) + 60; // 최소 200px, 패딩 60px
-            const height = Math.max(svgRect.height, 150) + 60; // 최소 150px, 패딩 60px
+            const width = Math.max(svgWidth, 200) + 60; // 최소 200px, 패딩 60px
+            const height = Math.max(svgHeight, 150) + 60; // 최소 150px, 패딩 60px
             
             sizes.push({ width, height, index });
             
-            console.log(`[플로우차트 ${index + 1}] 실제 크기: ${width.toFixed(0)}px x ${height.toFixed(0)}px`);
+            console.log(`[플로우차트 ${index + 1}] 원본 SVG 크기: ${svgWidth.toFixed(0)}px x ${svgHeight.toFixed(0)}px, 컨테이너 크기: ${width.toFixed(0)}px x ${height.toFixed(0)}px`);
             
             // 각 플로우차트 div의 크기를 실제 크기에 맞게 설정
             div.style.width = `${width}px`;
             div.style.height = `${height}px`;
             div.style.minWidth = `${width}px`;
             div.style.minHeight = `${height}px`;
+            
+            // SVG 자체도 원본 크기로 설정
+            svg.style.width = `${svgWidth}px`;
+            svg.style.height = `${svgHeight}px`;
         } else {
             // SVG가 아직 렌더링되지 않은 경우 기본 크기 사용
             const defaultWidth = 400;
@@ -668,24 +698,19 @@ function adjustGridToFlowchartSizes(mermaidGrid, count, cols, rows) {
         mermaidGrid.style.gridTemplateColumns = 'auto';
         mermaidGrid.style.gridTemplateRows = 'auto';
     } else {
-        // 여러 플로우차트: 각 열의 최대 너비를 계산
+        // 모든 플로우차트 중 가장 넓은 너비를 찾아서 모든 열에 동일하게 적용
+        let maxWidth = 0;
+        sizes.forEach(size => {
+            maxWidth = Math.max(maxWidth, size.width);
+        });
+        
+        // 모든 열의 너비를 가장 넓은 플로우차트의 너비로 통일
         const columnWidths = [];
         for (let c = 0; c < cols; c++) {
-            let maxWidth = 0;
-            for (let r = 0; r < rows; r++) {
-                const idx = r * cols + c;
-                if (idx < sizes.length && sizes[idx]) {
-                    maxWidth = Math.max(maxWidth, sizes[idx].width);
-                }
-            }
-            if (maxWidth > 0) {
-                columnWidths.push(`${maxWidth}px`);
-            } else {
-                columnWidths.push('auto');
-            }
+            columnWidths.push(`${maxWidth}px`);
         }
         
-        // 행 높이도 계산
+        // 행 높이는 각 행의 최대 높이를 사용
         const rowHeights = [];
         for (let r = 0; r < rows; r++) {
             let maxHeight = 0;
@@ -705,7 +730,7 @@ function adjustGridToFlowchartSizes(mermaidGrid, count, cols, rows) {
         mermaidGrid.style.gridTemplateColumns = columnWidths.join(' ');
         mermaidGrid.style.gridTemplateRows = rowHeights.join(' ');
         
-        console.log(`[그리드 크기 조정] 열 너비: ${columnWidths.join(', ')}, 행 높이: ${rowHeights.join(', ')}`);
+        console.log(`[그리드 크기 조정] 모든 열 너비: ${maxWidth.toFixed(0)}px (가장 넓은 플로우차트 기준), 행 높이: ${rowHeights.join(', ')}`);
     }
     
     // 그리드 크기 조정 후 초기 스케일 재계산 (즉시 실행)
